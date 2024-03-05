@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta
 from itemloaders.processors import TakeFirst
 from scrapy.loader import ItemLoader
-from item import KsdbShopsyLogoutAppItem
+from ksdb_parse.src.item import KsdbShopsyLogoutAppItem
 
 
 class ShopsyParseMain:
