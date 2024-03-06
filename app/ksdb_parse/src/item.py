@@ -182,3 +182,82 @@ class KsdbShopsyLogoutAppItem(scrapy.Item):
 
     l4 = scrapy.Field()
 
+class KsdbAmazonProductItem(scrapy.Item):
+    product_id = scrapy.Field()
+
+    input_pid = scrapy.Field()
+
+    catalog_name = scrapy.Field(
+        input_processor=MapCompose(clean_name, str.split),
+        output_processor=Join()
+    )
+
+    catalog_id = scrapy.Field()
+
+    source = scrapy.Field()
+
+    scraped_date = scrapy.Field()
+
+    product_name = scrapy.Field()
+
+    image_url = scrapy.Field(
+        input_processor=MapCompose(modifies_image_urls),
+    )
+
+    category_hierarchy = scrapy.Field()
+
+    product_price = scrapy.Field(
+        input_processor=MapCompose(clear_price, float),
+    )
+
+    arrival_date = scrapy.Field(
+        input_processor=MapCompose(process_arrival_date)
+    )
+
+    shipping_charges = scrapy.Field(
+        input_processor=MapCompose(shipping_charges, clear_price, float),
+    )
+
+    is_sold_out = scrapy.Field()
+
+    discount = scrapy.Field()
+
+    mrp = scrapy.Field(
+        input_processor=MapCompose(clear_price, float),
+    )
+
+    page_url = scrapy.Field()
+
+    product_url = scrapy.Field()
+
+    number_of_ratings = scrapy.Field(
+        input_processor=MapCompose(clear_price, int),
+    )
+
+    avg_rating = scrapy.Field(
+        input_processor=MapCompose(clear_price, float),
+    )
+
+    position = scrapy.Field()
+
+    country_code = scrapy.Field()
+
+    others = scrapy.Field()
+
+    is_zip = scrapy.Field()
+
+    Id = scrapy.Field()
+
+    zip_code = scrapy.Field()
+
+    is_login = scrapy.Field()
+
+    shipping_charges_json = scrapy.Field()
+
+    product_price_json = scrapy.Field()
+
+    mrp_json = scrapy.Field()
+
+    discount_json = scrapy.Field()
+
+    batch = scrapy.Field()
