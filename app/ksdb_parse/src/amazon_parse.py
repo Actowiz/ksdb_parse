@@ -2,8 +2,7 @@ import json,re
 from datetime import datetime, timedelta
 from itemloaders.processors import TakeFirst
 from scrapy.loader import ItemLoader
-# from ksdb_parse.src.item import KsdbShopsyLogoutAppItem
-from item import KsdbAmazonProductItem,clean_name,modifies_image_urls
+from ksdb_parse.src.item import KsdbAmazonProductItem,clean_name,modifies_image_urls
 from itemloaders.processors import MapCompose, Join
 
 class AmazonParseMain:
