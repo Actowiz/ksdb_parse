@@ -13,7 +13,7 @@ class AmazonParseMain:
 
     def parse(self, response):
 
-        loader = ItemLoader(item=KsdbAmazonProductItem())
+        loader = ItemLoader(item=KsdbAmazonProductItem(),response=response)
         loader.default_output_processor = TakeFirst()
 
         post_code_value = loader.get_xpath(
