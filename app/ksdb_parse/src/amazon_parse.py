@@ -370,10 +370,25 @@ class AmazonParseMain:
             if select_value and select_key:
                 product_attributes[select_key.replace(":", "").strip()] = select_value.strip()
 
+        ##add 22032024
+        dropdown_variant=response.xpath('//div[contains(@id,"variation_") and contains(@id,"_name")]')
+            if not dropdown_variant:
+                dropdown_variant=response.xpath('//div[contains(@id,"variation_")]')
+        for drop_v in dropdown_variant:
+            drop_label=drop_v.xpath('.//label/text()').get()
+            drop_value=drop_v.xpath('.//span[@class="a-dropdown-container"]//option[@selected]/text()').get()
+            if drop_label and drop_value:
+                product_attributes[drop_label.replace(":", "").strip()] = drop_value.strip()
+
         ##add 23022024 use by xpath
         if response.xpath('//div[@data-feature-name="expiryDate"]'):
             exp_key = response.xpath('//div[@data-feature-name="expiryDate"]/span[1]/text()').get('')
             exp_val = response.xpath('//div[@data-feature-name="expiryDate"]/span[2]/text()').get('')
+            
+            ##add 22032024
+            if not exp_val and not exp_key:
+                exp_key = response.xpath('//div[@data-feature-name="expiryDate"]//span[1]/text()').get('')
+                exp_val = response.xpath('//div[@data-feature-name="expiryDate"]//span[2]/text()').get('')
             if exp_key.strip() and exp_val.strip():
                 product_attributes[exp_key.replace(":", "").strip()] = exp_val.strip()
 
@@ -392,6 +407,12 @@ class AmazonParseMain:
         for books in book_specs:
             bk = books.xpath('./span/text()').get()
             bv = books.xpath('./following-sibling::div[contains(@class,"rpi-attribute-value")]/span/text()').get()
+            
+            ##add 22032024
+            if not bv:
+                bv = books.xpath('./following-sibling::div[contains(@class,"rpi-attribute-value")]//span/text()').getall()
+                if bv:
+                    bv=' '.join(bv).replace('\n','').replace('\r','').replace('\t','').strip()
             if bk and bv:
                 product_attributes[bk.replace(":", "").strip()] = bv.strip()
 
