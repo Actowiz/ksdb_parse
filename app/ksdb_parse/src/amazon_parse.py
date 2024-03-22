@@ -372,8 +372,8 @@ class AmazonParseMain:
 
         ##add 22032024
         dropdown_variant=response.xpath('//div[contains(@id,"variation_") and contains(@id,"_name")]')
-            if not dropdown_variant:
-                dropdown_variant=response.xpath('//div[contains(@id,"variation_")]')
+        if not dropdown_variant:
+            dropdown_variant=response.xpath('//div[contains(@id,"variation_")]')
         for drop_v in dropdown_variant:
             drop_label=drop_v.xpath('.//label/text()').get()
             drop_value=drop_v.xpath('.//span[@class="a-dropdown-container"]//option[@selected]/text()').get()
