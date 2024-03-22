@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="ksdb_parse",
-    version="0.0.5",
+    version="0.0.6",
     description="",
     package_dir={"": "app"},
     packages=find_packages(where="app"),
