@@ -1,304 +1,399 @@
 import json
+import re
 from datetime import datetime, timedelta
-from itemloaders.processors import TakeFirst
-from scrapy.loader import ItemLoader
-from ksdb_parse.src.item import KsdbShopsyLogoutAppItem
 
 
-class ShopsyParseMain:
+class ShopsyParse():
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        pass
+    def __init__(self, response):
+        self.response = response
+        self.data_json = json.loads(self.response.text)
+        if self.data_json:
+            if self.data_json.get('RESPONSE'):
+                if self.data_json.get('RESPONSE').get('pageData'):
+                    self.page_context = self.data_json.get('RESPONSE').get('pageData').get('pageContext')
+                self.slots = self.data_json.get('RESPONSE').get('slots')
 
-    def parse(self, response):
+    def get_product_id(self):
+        if self.page_context:
+            product_id = self.page_context.get('productId')
+            return product_id
 
-        loader = ItemLoader(item=KsdbShopsyLogoutAppItem())
-        loader.default_output_processor = TakeFirst()
+    def get_listing_id(self):
+        if self.page_context:
+            product_id = self.page_context.get('listingId')
+            return product_id
 
-        data_json = json.loads(response.text)
-        product_id = ''
-        try:
-            title = data_json.get('RESPONSE').get('pageData').get('pageContext').get('titles').get('title')
-            subtitle = data_json.get('RESPONSE').get('pageData').get('pageContext').get('titles').get('subtitle')
-            product_name = f"{title if title else ''} ({subtitle if subtitle else ''})".replace('()', '')
-        except:
-            product_name = ''
+    def get_product_name(self):
+        if self.page_context:
+            if self.page_context.get('titles'):
+                title = self.page_context.get('titles').get('title')
+                subtitle = self.page_context.get('titles').get('subtitle')
+                product_name = f"{title if title else ''} ({subtitle if subtitle else ''})".replace('()', '')
+                return product_name
 
-        try:
-            brand = data_json.get('RESPONSE').get('pageData').get('pageContext').get('brand')
-        except:
-            brand = ''
-        try:
-            image_url = data_json.get('RESPONSE').get('pageData').get('pageContext').get('imageUrl').replace('{@width}',
-                                                                                                             '1920').replace(
-                '{@height}', '1080').replace('{@quality}', '100')
-        except:
-            image_url = ''
-        try:
-            category_dict = data_json.get('RESPONSE').get('pageData').get('pageContext').get('analyticsData')
-            category_hierarchy = {
-                'l1': category_dict.get('category'),
-                'l2': category_dict.get('subCategory'),
-                'l3': category_dict.get('superCategory'),
-                'l4': category_dict.get('vertical'),
-            } if category_dict else {}
-        except:
-            category_hierarchy = {}
+    def get_brand(self):
+        if self.page_context:
+            brand = self.page_context.get('brand')
+            return brand
 
-        try:
-            product_url = data_json.get('RESPONSE').get('pageData').get('pageContext').get('seo').get(
-                'webUrl') + f"?pid={product_id}"
-        except:
-            product_url = ''
-        try:
-            listing_id = data_json.get('RESPONSE').get('pageData').get('pageContext').get('listingId')
-        except:
-            listing_id = None
-        page_url = 'N/A'
+    def get_image_url(self):
+        if self.page_context:
+            image_url = (self.page_context.get('imageUrl')
+                         .replace('{@width}','1920')
+                         .replace('{@height}', '1080')
+                         .replace('{@quality}', '100'))
+            return image_url
 
-        try:
-            if data_json.get('RESPONSE').get('pageData').get('pageContext').get('pricing'):
-                product_price = data_json.get('RESPONSE').get('pageData').get('pageContext').get('pricing').get(
-                    'finalPrice').get('decimalValue')
-                mrp = data_json.get('RESPONSE').get('pageData').get('pageContext').get('pricing').get('mrp')
-                discount = data_json.get('RESPONSE').get('pageData').get('pageContext').get('pricing').get(
-                    'totalDiscount')
+    def get_category_hierarchy(self):
+        if self.page_context:
+            category_dict = self.page_context.get('analyticsData')
+            if category_dict:
+                category_hierarchy = {
+                    'l1': category_dict.get('category'),
+                    'l2': category_dict.get('subCategory'),
+                    'l3': category_dict.get('superCategory'),
+                    'l4': category_dict.get('vertical'),
+                } if category_dict else {}
+                return category_hierarchy
+
+    def get_product_url(self):
+        if self.page_context:
+            if self.page_context.get('seo'):
+                product_url = self.page_context.get('seo').get('webUrl') + f"?pid={self.get_product_id()}"
+                return product_url
+
+    def get_page_url(self):
+        return 'N/A'
+
+    def get_final_price(self):
+        if self.page_context:
+            if self.page_context.get('pricing'):
+                if self.page_context.get('pricing').get('finalPrice'):
+                    decimalValue = self.page_context.get('pricing').get('finalPrice').get('decimalValue')
+                    return decimalValue
+
+    def get_fsp(self):
+        if self.page_context:
+            if self.page_context.get('pricing'):
+                fsp = self.page_context.get('pricing').get('fsp')
+                return fsp
+
+    def get_mrp(self):
+        if self.page_context:
+            if self.page_context.get('pricing'):
+                totalDiscount = self.page_context.get('pricing').get('totalDiscount')
+                return totalDiscount
+
+    def get_discount(self):
+        if self.page_context:
+            if self.page_context.get('pricing'):
+                mrp = self.page_context.get('pricing').get('mrp')
+                return mrp
+
+    def get_avg_rating(self):
+        if self.page_context:
+            if self.page_context.get('rating'):
+                avg_rating = self.page_context.get('average')
+                return avg_rating
+
+    def get_number_of_ratings(self):
+        if self.page_context:
+            if self.page_context.get('rating'):
+                number_of_ratings = self.page_context.get('rating').get('count')
+                return number_of_ratings
+
+    def get_target_slot_data(self, widget_type):
+        if self.slots:
+            for slot in self.slots:
+                if slot.get('widget'):
+                    if slot.get('widget').get('type') == widget_type:
+                        if slot.get('widget'):
+                            slot_data = slot.get('widget').get('data')
+                            return slot_data
+
+    def get_variations_list(self):
+        variation_pids = []
+        widget_type = "COMPOSED_SWATCH"
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            if slot.get('swatchComponent'):
+                if slot.get('swatchComponent').get('value'):
+                    if slot.get('swatchComponent').get('value').get('products'):
+                        variations = slot.get('swatchComponent').get('value').get('products').keys()
+                        variation_pids.extend(variations)
+        widget_type = "SWATCH_VARIANTS"
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            if slot.get('renderableComponents'):
+                if slot.get('renderableComponents').get('value'):
+                    pid = slot.get('renderableComponents').get('value').get('id')
+                    variation_pids.append(pid)
+        return variation_pids
+
+
+    def get_moq(self):
+        widget_type = 'SHOPSY_PRODUCT_PAGE_SUMMARY_V2'
+        slot = self.get_target_slot_data(widget_type)
+        moq = '1'
+        if slot.get('moqComponent'):
+            if slot.get('moqComponent').get('type') == 'MoqAnnouncement':
+                if slot.get('moqComponent').get('announcement'):
+                    if slot.get('moqComponent').get('announcement').get('title'):
+                        if slot.get('moqComponent').get('announcement').get('title').get('value'):
+                            moq_str = slot.get('moqComponent').get('announcement').get('title').get('value').get('text')
+                            numbers = re.findall(r'\d+', moq_str)
+                            if numbers:
+                                moq = numbers[0]
+        return moq
+
+    def get_all_images(self):
+        widget_type = 'MULTIMEDIA_SHOPSY'
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            multimediaComponents = slot.get('multimediaComponents')
+            if multimediaComponents:
+                images = []
+                for multimediaComponent in multimediaComponents:
+                    if multimediaComponent.get('value'):
+                        if multimediaComponent.get('value').get('contentType') == 'IMAGE':
+                            image_url = multimediaComponent.get('value').get('url')
+                            image_url = image_url.replace('{@width}', '1920').replace('{@height}','1080').replace('{@quality}', '100')
+                            images.append(image_url)
+                return images
+
+    def get_seller_return_policy(self):
+        widget_type = "DELIVERY"
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            deliveryCallouts = slot.get('deliveryCallouts')
+            if deliveryCallouts:
+                for deliveryCallout in deliveryCallouts:
+                    if deliveryCallout.get('value'):
+                        delivery_callout_text = deliveryCallout.get('text')
+                        if delivery_callout_text and 'Return' in delivery_callout_text:
+                            return delivery_callout_text
+
+    def get_arrival_date(self):
+        if self.get_availablility() == 'true':
+            return 'N/A'
+        widget_type = "DELIVERY"
+        slot = self.get_target_slot_data(widget_type)
+        arrival_date = ''
+        if slot:
+            messages = slot.get('messages')
+            if messages:
+                for message in messages:
+                    if message.get('value'):
+                        if message.get('value').get('type') == 'DeliveryInfoMessage':
+                            date_text = message.get('value').get('dateText')
+                            arrival_date = datetime.strptime(
+                                    datetime.strftime(datetime.now() + timedelta(days=1), '%d %b, %A, %Y'),
+                                    '%d %b, %A, %Y') if date_text.startswith("Tomorrow") else datetime.strptime(
+                                    f"{date_text}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
+        if not arrival_date:
+            date_text = self.page_context.get('trackingDataV2').get('slaText')
+            arrival_date = datetime.strptime(f"{date_text}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
+        return arrival_date
+
+    def get_shipping_price(self):
+
+        if ('"freeOption":true' in self.response.text) or ('FREE Delivery' in self.response.text):
+            return '0'
+
+        widget_type = "DELIVERY"
+        slot = self.get_target_slot_data(widget_type)
+        for msg in slot.get('messages'):
+            shiping_charges = None
+            if msg.get('value'):
+                if msg.get('value').get('type') == "DeliveryInfoMessage":
+                    shiping_charges = msg.get('value').get('charge')[0].get('decimalValue')
+            if shiping_charges:
+                return shiping_charges
             else:
-                product_price, mrp, discount = '0', '0', '0'
-        except:
-            product_price, mrp, discount = '0', '0', '0'
+                return '0'
 
-        try:
-            avg_rating = data_json.get('RESPONSE').get('pageData').get('pageContext').get('rating').get('average')
-            number_of_ratings = data_json.get('RESPONSE').get('pageData').get('pageContext').get('rating').get('count')
-        except:
-            avg_rating, number_of_ratings = None, None
+    def get_coupons(self):
+        widget_type = "NEP_COUPON"
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            couponSummaries = slot.get('couponSummaries')
+            couponTag, couponTitle = None, None
+            if couponSummaries:
+                for couponSummarie in couponSummaries:
+                    if couponSummarie.get('couponTag'):
+                        data = couponSummarie.get('couponTag').get('data')
+                        if data:
+                            couponTag = data.get('value').get('text')
+                    if couponSummarie in couponSummaries:
+                        data = couponSummarie.get('newTitle').get('data')
+                        if data:
+                            couponTitle = data.get('value').get('text')
+            if couponTag and couponTitle:
+                return {'couponTag': couponTag, 'couponTitle': couponTitle}
 
-        slots = data_json.get('RESPONSE').get('slots')
-        slots = slots if slots else []
+    def get_offers(self):
+        widget_type = "PRODUCT_PAGE_SUMMARY_V2"
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            if slot.get('offerInfo'):
+                if slot.get('offerInfo').get('value'):
+                    if slot.get('offerInfo').get('value').get('offerGroups'):
+                        offers = slot.get('offerInfo').get('value').get('offerGroups')[0].get('offers')
+                        if offers:
+                            for offer in offers:
+                                offerTag = offer.get('value').get('tags')[0]
+                                offerName = offer.get('value').get('title')
+                                return {'title': offerTag, 'details': offerName}
 
-        other_data = dict()
+    def get_seller_count(self):
+        if self.page_context:
+            if self.page_context.get('trackingDataV2'):
+                sellerCount = self.page_context.get('trackingDataV2').get('sellerCount')
+                return sellerCount
 
-        arrival_date = 'N/A'
-        shipping_charges = '0'
-        variations = []
+    def get_one_seller(self):
+        if self.page_context:
+            if self.page_context.get('trackingDataV2'):
+                Seller_Name = self.page_context.get('trackingDataV2').get('sellerName')
+                Seller_Rating = self.page_context.get('trackingDataV2').get('sellerRating')
+                return [{'Seller_Name': Seller_Name, 'Seller_Rating': Seller_Rating}]
 
-        for slot in slots:
-            try:
-                widget_type = slot.get('widget').get('type')
-            except:
-                widget_type = None
+    def get_individual_ratings(self):
+        if self.page_context:
+            if self.page_context.get('rating'):
+                rating_breakup = self.page_context.get('rating').get('breakup')
+                if rating_breakup:
+                    return {5 - _: rating_breakup[_] for _, i in
+                     enumerate(rating_breakup)} if rating_breakup else None
 
-            if widget_type == "COMPOSED_SWATCH":
-                try:
-                    var_comp = [var_pid for var_pid in
-                                slot.get('widget').get('data').get(
-                                    'swatchComponent').get('value').get('products').keys()]
-                    variations.extend(var_comp)
-                except:
-                    pass
-            if widget_type == "SWATCH_VARIANTS":
-                try:
-                    var_comp = [var_pid.get('value').get('id') for var_pid in
-                                slot.get('widget').get('data').get(
-                                    'renderableComponents')]
-                    variations.extend(var_comp)
-                except Exception as e:
-                    print(e)
-            if widget_type:
-                try:
-                    if widget_type == 'PRODUCT_PAGE_SUMMARY_V2':
-                        if slot.get('widget').get('data').get('moqComponent').get('type') == 'MoqAnnouncement':
-                            moq = slot.get('widget').get('data').get('moqComponent').get('announcement').get(
-                                'subTitle').get('value').get('text')
-                            other_data['MOQ'] = moq
-                except:
-                    other_data['MOQ'] = "1"
-                try:
-                    if widget_type == "COMPOSED_SWATCH":
-                        other_data['variation_id'] = [var_pid for var_pid in
-                                                      slot.get('widget').get('data').get(
-                                                          'swatchComponent').get('value').get('products').keys()]
-                except:
-                    pass
-                # IMAGES
-                if widget_type == "MULTIMEDIA_SHOPSY":
-                    try:
-                        multimediaComponents = slot.get('widget').get('data').get(
-                            'multimediaComponents')
-                        other_data['Images'] = [
-                            multimediaComponent.get('value').get('url').replace('{@width}', '1920').replace('{@height}',
-                                                                                                            '1080').replace(
-                                '{@quality}', '100') for multimediaComponent in multimediaComponents if
-                            multimediaComponent.get('value').get('contentType') == 'IMAGE']
-                    except:
-                        pass
-
-                if widget_type == "POLICY_DETAILS":
-                    try:
-                        deliveryCallouts = slot.get('widget').get('data').get('policyInfo')[0].get(
-                            'value').get('policyCallout').get('text')
-                        other_data['seller_return_policy'] = deliveryCallouts if deliveryCallouts else None
-                    except:
-                        pass
-
-                if widget_type == "DELIVERY":
-                    # SELLER RETURN POLICY
-                    try:
-                        deliveryCallouts = slot.get('widget').get('data').get('deliveryCallouts')
-                        return_text = [deliverycallout.get('value').get('text') for deliverycallout in deliveryCallouts
-                                       if 'Return' in deliverycallout.get('value').get('text')]
-                        other_data['seller_return_policy'] = return_text[0] if return_text else None
-                    except:
-                        pass
-                    # ARRIVAL DATE
-                    try:
-                        try:
-                            date_text = [msg.get('value').get('dateText') for msg in
-                                         slot.get('widget').get('data').get('messages') if
-                                         msg.get('value').get('type') == "DeliveryInfoMessage"]
-                            arrival_date = date_text[0] if date_text else ''
-                            arrival_date = datetime.strptime(
-                                datetime.strftime(datetime.now() + timedelta(days=1), '%d %b, %A, %Y'),
-                                '%d %b, %A, %Y') if arrival_date.startswith("Tomorrow") else datetime.strptime(
-                                f"{arrival_date}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
-                        except:
-                            arrival_date = ''
-                        if not arrival_date:
-                            arrival_date = data_json.get('RESPONSE').get('pageData').get('pageContext').get(
-                                'trackingDataV2').get('slaText')
-                            arrival_date = datetime.strptime(
-                                f"{arrival_date}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
-                    except:
-                        arrival_date = ''
-                    # SHIPPING CHARGES
-                    try:
-                        if ('"freeOption":true' in response.text) or ('FREE Delivery' in response.text):
-                            shipping_charges = '0'
-                        else:
-                            shiping_charges_text = [msg.get('value').get('charge')[0].get('decimalValue') for msg in
-                                                    slot.get('widget').get('data').get('messages') if
-                                                    msg.get('value').get('type') == "DeliveryInfoMessage"]
-                            shipping_charges = shiping_charges_text[0] if shiping_charges_text and shiping_charges_text[
-                                0] != '0' else '0'
-                    except:
-                        pass
-
-                # COUPON DATA
-
-                if widget_type == "NEP_COUPON":
-                    try:
-                        couponSummaries = slot.get('widget').get('data').get('couponSummaries')
-                        for couponSummarie in couponSummaries:
-                            couponTag = couponSummarie.get('couponTag').get('data')[0].get('value').get('text')
-                            couponTitle = couponSummarie.get('newTitle').get('data')[0].get('value').get('text')
-                            other_data['coupons'] = {'couponTag': couponTag, 'couponTitle': couponTitle}
-                    except:
-                        pass
-
-                # OFFER DATA
-                if widget_type == "PRODUCT_PAGE_SUMMARY_V2":
-                    try:
-                        offerGroups = slot.get('widget').get('data').get('offerInfo').get(
-                            'value').get('offerGroups')
-                        offers = offerGroups[0].get('offers') if offerGroups else []
-                        for offer in offers:
-                            offerTag = offer.get('value').get('tags')[0]
-                            offerName = offer.get('value').get('title')
-                            other_data['offers'] = {'title': offerTag, 'details': offerName}
-                    except:
-                        pass
-
-        try:
-            seller_count = data_json.get('RESPONSE').get('pageData').get('pageContext').get('trackingDataV2').get(
-                'sellerCount')
-            if seller_count == 1:
-                Seller_Name = data_json.get('RESPONSE').get('pageData').get('pageContext').get('trackingDataV2').get(
-                    'sellerName')
-                Seller_Rating = data_json.get('RESPONSE').get('pageData').get('pageContext').get('trackingDataV2').get(
-                    'sellerRating')
-                other_data['sellerList'] = [{'Seller_Name': Seller_Name, 'Seller_Rating': Seller_Rating}]
-        except:
-            seller_count = 0
-
-        try:
-            rating_breakup = data_json.get('RESPONSE').get('pageData').get('pageContext').get('rating').get('breakup')
-            other_data['individualRatingsCount'] = {5 - _: rating_breakup[_] for _, i in
-                                                    enumerate(rating_breakup)} if rating_breakup else None
-        except:
-            pass
+    def get_availablility(self):
         sold_out = 'true'
-        try:
-            productstatus = data_json.get('RESPONSE').get('pageData').get('pageContext').get('trackingDataV2').get(
-                'productStatus')
-            if "Currently out of stock for" in response.text:
-                sold_out = 'false'
-            elif productstatus == "current":
-                sold_out = 'false'
-        except:
-            pass
-        try:
-            other_data['item_id'] = data_json.get('RESPONSE').get('pageData').get(
-                'pageContext').get('itemId')
-        except:
-            pass
-        if sold_out == 'true':
-            arrival_date = 'N/A'
-        try:
-            item_id = data_json['RESPONSE']['pageData']['pageContext']['itemId']
-        except:
-            item_id = None
+        productstatus = None
+        if self.page_context:
+            if self.page_context.get('trackingDataV2'):
+                productstatus = self.page_context.get('trackingDataV2').get('productStatus')
+        if "Currently out of stock for" in self.response.text:
+            sold_out = 'false'
+        elif productstatus == "current":
+            sold_out = 'false'
 
-        if 'MOQ' not in other_data.keys():
-            other_data['MOQ'] = "1"
+        return sold_out
 
+    def get_itemid(self):
+        if self.page_context:
+            item_id = self.page_context.get('itemId')
+            return item_id
+
+    def get_fassured(self):
+        if '"fAssured": true' in self.response.text:
+            return True
+        else:
+            return False
+
+    def get_isbn(self):
+        isbn_pattern = r'ISBN:\s*(\d+)'
+        isbn_matches = re.findall(isbn_pattern, self.response.text)
+        if isbn_matches:
+            return isbn_matches[0]
+
+    def clean_name(self, value):
+        value = str(value)
+        if value.strip():
+            value = (
+                value.strip()
+                .replace('\\', '')
+                .replace('"', '\"')
+                .replace("\u200c", "")
+                .replace("\u200f", "")
+                .replace("\u200e", "")
+                .replace("\n", "")
+                .replace("\r", "")
+                .replace("\t", "")
+            )
+            if "\n" in value:
+                value = " ".join(value.split())
+            return value
+
+    def get_key_features(self):
+        if self.data_json.get('RESPONSE'):
+            if self.data_json.get('RESPONSE').get('data'):
+                key_features = self.data_json.get('RESPONSE').get('data').get('product_key_features_1')
+                if key_features:
+                    features = []
+                    for data_1 in key_features.get('data'):
+                        features.append(self.clean_name(data_1.get('value').get('text')))
+                    return features if features else None
+
+    def get_product_description(self):
+        if self.data_json:
+            if self.data_json.get('RESPONSE'):
+                if self.data_json.get('RESPONSE').get('data'):
+                    product_description = self.data_json.get('RESPONSE').get('data').get('product_text_description_1')
+                    if product_description:
+                        regex_pattern = re.compile(r'<.*?>')
+                        try:
+                            description = re.sub(regex_pattern, '', self.clean_name(
+                                " | ".join([data.get('value').get('text') for data in product_description.get('data')])))
+                        except:
+                            description = ''
+                        return description
+
+    def get_detail_component(self):
+        detailedComponents = dict()
         try:
-            if int(mrp) < int(product_price):
-                mrp = product_price
-                discount = 'N/A'
+            detail_components = self.data_json.get('RESPONSE').get('data').get('listing_manufacturer_info').get('data')[
+                0].get('value').get('detailedComponents')
+            if detail_components:
+                for detail_component in detail_components:
+                    detailedComponents[self.clean_name(detail_component.get('value').get('title'))] = self.clean_name(
+                        detail_components.get('value').get('callouts')[0])
         except:
             pass
         try:
-            if int(mrp) == 0:
-                mrp = "N/A"
+            mapped_cards = self.data_json.get('RESPONSE').get('data').get('listing_manufacturer_info').get('data')[0].get(
+                'value').get('mappedCards')
+            detail_comps =self.data_json.get('RESPONSE').get('data').get('listing_manufacturer_info').get('data')[0].get(
+                'value').get('detailedComponents')
+            if mapped_cards:
+                for mapped_card in mapped_cards:
+                    detailedComponents[self.clean_name(mapped_card.get('key'))] = self.clean_name(mapped_card.get('values')[0])
+            if detail_comps:
+                for detail_comp in detail_comps:
+                    try:
+                        detailedComponents[
+                            self.clean_name(detail_comp.get('value').get('title')).replace("'", "")] = detail_comp.get(
+                            'value').get('callouts')
+                    except:
+                        pass
+            return detailedComponents
         except:
             pass
+
+    def get_specification(self):
         try:
-            if int(product_price) == 0:
-                product_price = "N/A"
+            productSpecification = dict()
+            specifications = self.data_json.get('RESPONSE').get('data').get('product_specification_1').get('data')
+            if specifications:
+                for specification in specifications:
+                    for attribute in specification.get('value').get('attributes'):
+                        productSpecification[self.clean_name(attribute.get('name'))] = self.clean_name(
+                            " | ".join(attribute.get('values')))
+            return productSpecification
         except:
             pass
+        
+    def get_seller_list(self):
+        sellers = list()
         try:
-            if int(discount) == 0:
-                discount = "N/A"
+            for seller in self.data_json.get('RESPONSE').get('data').get('product_seller_detail_1').get('data'):
+                sel = dict()
+                if seller.get('value').get('sellerInfo').get('value').get('type') == 'SellerInfoValue':
+                    sel['SellerId'] = self.clean_name(seller.get('value').get('sellerInfo').get('value').get('id'))
+                    sel['SellerName'] = self.clean_name(seller.get('value').get('sellerInfo').get('value').get('name'))
+                    sel['rating'] = seller.get('value').get('sellerInfo').get('value').get('rating').get('average')
+                    sel['price'] = seller.get('value').get('pricing').get('value').get('finalPrice').get('decimalValue')
+                    sellers.append(sel)
         except:
-            pass
-
-        other_data['Variation'] = list(set(variations))
-        other_data['listing_id'] = listing_id
-        other_data['item_id'] = item_id
-        other_data['data_vendor'] = 'Actowiz'
-        other_data['delivery'] = 'logout'
-        loader.add_value('position', 'N/A')
-        # loader.add_value('product_id', product_id)
-        # loader.add_value('catalog_id', product_id)
-        loader.add_value('product_name', product_name.replace(' ()', ''))
-        loader.add_value('catalog_name', product_name.replace(' ()', ''))
-        loader.add_value('image_url', image_url)
-        loader.add_value('category_hierarchy', json.dumps(category_hierarchy, ensure_ascii=False))
-        loader.add_value('product_price', product_price if product_price else 'N/A')
-        loader.add_value('arrival_date', arrival_date)
-        loader.add_value('shipping_charges', shipping_charges)
-        loader.add_value('is_sold_out', sold_out)
-        loader.add_value('discount', str(discount) if discount else 'N/A')
-        loader.add_value('mrp', str(mrp) if mrp else 'N/A')
-        loader.add_value('page_url', page_url)
-        loader.add_value('product_url', product_url)
-        loader.add_value('number_of_ratings', str(number_of_ratings))
-        loader.add_value('avg_rating', str(avg_rating))
-        loader.add_value('brand', brand)
-
-        item = loader.load_item()
-
-        return item
+            pass        
+        return sellers
