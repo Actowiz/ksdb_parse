@@ -79,13 +79,13 @@ class ShopsyParse():
                 fsp = self.page_context.get('pricing').get('fsp')
                 return fsp
 
-    def get_mrp(self):
+    def get_discount(self):
         if self.page_context:
             if self.page_context.get('pricing'):
                 totalDiscount = self.page_context.get('pricing').get('totalDiscount')
                 return totalDiscount
 
-    def get_discount(self):
+    def get_mrp(self):
         if self.page_context:
             if self.page_context.get('pricing'):
                 mrp = self.page_context.get('pricing').get('mrp')
@@ -224,11 +224,11 @@ class ShopsyParse():
                     if couponSummarie.get('couponTag'):
                         data = couponSummarie.get('couponTag').get('data')
                         if data:
-                            couponTag = data.get('value').get('text')
+                            couponTag = data[0].get('value').get('text')
                     if couponSummarie in couponSummaries:
                         data = couponSummarie.get('newTitle').get('data')
                         if data:
-                            couponTitle = data.get('value').get('text')
+                            couponTitle = data[0].get('value').get('text')
             if couponTag and couponTitle:
                 return {'couponTag': couponTag, 'couponTitle': couponTitle}
 
@@ -382,7 +382,7 @@ class ShopsyParse():
             return productSpecification
         except:
             pass
-        
+
     def get_seller_list(self):
         sellers = list()
         try:
@@ -395,5 +395,25 @@ class ShopsyParse():
                     sel['price'] = seller.get('value').get('pricing').get('value').get('finalPrice').get('decimalValue')
                     sellers.append(sel)
         except:
-            pass        
+            pass
         return sellers
+
+    def get_product_details_from_pdp(self):
+        widget_type = "PRODUCT_DETAILS"
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            if slot.get('renderableComponent'):
+                if slot.get('renderableComponent').get('value'):
+                    product_detail = []
+                    details = slot.get('renderableComponent').get('value').get('details')
+                    if details:
+                        product_detail.append(f'details : {details}')
+                    specifications = slot.get('renderableComponent').get('value').get('specification')
+                    if specifications:
+                        for specification in specifications:
+                            name = specification.get('name')
+                            values = specification.get('values')
+                            if isinstance(values, list):
+                                values = ' | '.join(values)
+                            product_detail.append(f'{name.strip()} : {values}'.strip())
+                    return product_detail
