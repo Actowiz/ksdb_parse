@@ -512,6 +512,7 @@ class AmazonParseMain:
             seller_detail = dict()
 
             seller_loop = response.xpath('//div[@class="tabular-buybox-container"]//div[@class="tabular-buybox-text"]')
+            seller_loop2 = response.xpath('//div[@id="almShipsFromSoldBy_feature_div"]//tr[@class="a-spacing-micro"]')
             if seller_loop:
                 for sell in seller_loop:
                     attrib_name = sell.xpath('./@tabular-attribute-name').get()
@@ -519,6 +520,18 @@ class AmazonParseMain:
                     if attrib_name and attrib_value:
                         if attrib_name == 'Sold by':
                             seller_link = sell.xpath('.//a[@id="sellerProfileTriggerId"]/@href').get()
+                            if seller_link:
+                                seller_detail['Seller_link'] = seller_link
+                        seller_detail[attrib_name.strip()] = attrib_value.strip()
+            elif seller_loop2:
+                for sell in seller_loop2:
+                    attrib_name = sell.xpath('.//td[1]/span//text()').get()
+                    attrib_value = sell.xpath('.//td[2]/span//text()').get('').strip()
+                    if not attrib_value:
+                        attrib_value = sell.xpath('.//td[2]/span/a/text()').get('').strip()
+                    if attrib_name and attrib_value:
+                        if attrib_name == 'Sold by':
+                            seller_link = sell.xpath('.//td[2]/span/a/@href').get()
                             if seller_link:
                                 seller_detail['Seller_link'] = seller_link
                         seller_detail[attrib_name.strip()] = attrib_value.strip()
