@@ -261,3 +261,4 @@ class KsdbAmazonProductItem(scrapy.Item):
     discount_json = scrapy.Field()
 
     batch = scrapy.Field()
+    other_dictionary=scrapy.Field()
