@@ -343,7 +343,7 @@ class AmazonParseMain:
         additional_infor = self.response.xpath(
             '//h3[contains(text(),"Additional Information") and @class="product-facts-title"]/following-sibling::*')
         for add_info in additional_infor:
-            if 'h3' in add_info.xpath('.').get(self):
+            if 'h3' in add_info.xpath('.').get():
                 break
             else:
                 add_k = add_info.xpath('.//span[@class="a-color-base"][1]/text()').get('')
@@ -352,7 +352,7 @@ class AmazonParseMain:
                     '')
                 if add_k and add_v:
                     if not all(
-                            item in {add_k.strip(self): add_v.strip()}.items() for item in product_attributes.items()):
+                            item in {add_k.strip(): add_v.strip()}.items() for item in product_attributes.items()):
                         product_attributes.pop(add_k, None)
                         additional_information[add_k.strip()] = add_v.strip()
         if additional_information:
@@ -385,7 +385,7 @@ class AmazonParseMain:
             if not exp_val and not exp_key:
                 exp_key = self.response.xpath('//div[@data-feature-name="expiryDate"]//span[1]/text()').get('')
                 exp_val = self.response.xpath('//div[@data-feature-name="expiryDate"]//span[2]/text()').get('')
-            if exp_key.strip() and exp_val.strip(self):
+            if exp_key.strip() and exp_val.strip():
                 product_attributes[exp_key.replace(":", "").strip()] = exp_val.strip()
 
         ##add 23022024 bsr in attrib
@@ -394,7 +394,7 @@ class AmazonParseMain:
                 extra_key = attrib.xpath('./text()').get('')
                 extra_val = attrib.xpath('./following-sibling::span/text()').get('')
 
-                if extra_key.strip() and extra_val.strip(self):
+                if extra_key.strip() and extra_val.strip():
                     product_attributes[extra_key.replace(":", "").strip()] = extra_val.strip()
 
         ##add 05032024
@@ -639,7 +639,7 @@ class AmazonParseMain:
                 if extra_rating_key and extra_rating_val:
                     extra_rating_dict[extra_rating_key.strip()] = extra_rating_val.strip()
             if extra_rating_dict:
-                self.other_data['extra_rating'] = {headname.strip(self): extra_rating_dict}
+                self.other_data['extra_rating'] = {headname.strip(): extra_rating_dict}
 
     def extract_others_certifications(self):
         certifications = list()
