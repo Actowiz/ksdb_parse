@@ -111,7 +111,19 @@ class ShopsyParse():
                         if slot.get('widget'):
                             slot_data = slot.get('widget').get('data')
                             return slot_data
-                            
+
+    def get_product_announcement(self):
+        widget_type = 'PRODUCT_ANNOUNCEMENT'
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            if slot.get('widget'):
+                if slot.get('widget').get('data'):
+                    if slot.get('widget').get('data').get('announcement'):
+                        if slot.get('widget').get('data').get('announcement').get('value'):
+                            text = slot.get('widget').get('data').get('announcement').get('value').get('title')
+                            return title
+
+
     def get_policy_info(self):
         widget_type = 'POLICY_DETAILS'
         slot = self.get_target_slot_data(widget_type)
@@ -120,7 +132,6 @@ class ShopsyParse():
             policies = slot.get('policyInfo')
             if policies:
                 for policy in policies:
-                    'RESPONSE.slots[8].widget.data.policyInfo[0].value.policyCallout.text'
                     if policy.get('value'):
                         if policy.get('value').get('policyCallout'):
                             policy_text = policy.get('value').get('policyCallout').get('text')
@@ -128,9 +139,58 @@ class ShopsyParse():
                                 policy_info.append(policy_text)
         if policy_info:
             return policy_info
-    
+
+    def get_delivery_msg(self):
+        widget_type = "DELIVERY"
+        delivery_info = []
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            deliveryCallouts = slot.get('deliveryCallouts')
+            if deliveryCallouts:
+                for deliveryCallout in deliveryCallouts:
+                    if deliveryCallout.get('value'):
+                        delivery_info.append(deliveryCallout.get('value').get('text'))
+        return delivery_info
+
+    def get_product_notes(self):
+        widget_type = "PRODUCT_NOTE"
+        slot = self.get_target_slot_data(widget_type)
+        note_info = []
+        if slot:
+            notes = slot.get('notes')
+            if notes:
+                for note in notes:
+                    if note.get('value'):
+                        text = note.get('value').get('text')
+                        return text
+
+    def get_product_expiry(self):
+        widget_type = "EXPIRY"
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            if slot.get('renderableComponent'):
+                if slot.get('renderableComponent').get('value'):
+                    expiry = slot.get('renderableComponent').get('value').get('expiry')
+                    return expiry
+
+    def get_other_announcement(self):
+        widget_type = "FORMATTED_ANNOUNCEMENT"
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            renderableComponents = slot.get('renderableComponent')
+            for renderableComponent in renderableComponents:
+                if renderableComponent.get('value'):
+                    datas = renderableComponent.get('value').get('data')
+                    if datas:
+                        for data in datas:
+                            if data.get('value'):
+                                text = data.get('value').get('text')
+                                return text
+
+
     def get_variations_list(self):
         variation_pids = []
+
         widget_type = "COMPOSED_SWATCH"
         slot = self.get_target_slot_data(widget_type)
         if slot:
@@ -141,28 +201,44 @@ class ShopsyParse():
                         variation_pids.extend(variations)
         widget_type = "SWATCH_VARIANTS"
         slot = self.get_target_slot_data(widget_type)
+        variations_name = []
         if slot:
             if slot.get('renderableComponents'):
                 for renderableComponent in slot.get('renderableComponents'):
                     if renderableComponent.get('value'):
                         pid = renderableComponent.get('value').get('id')
                         variation_pids.append(pid)
+                        if renderableComponent.get('value').get('swatchValue'):
+                            variations_name.append(renderableComponent.get('value').get('swatchValue').get('value'))
         return variation_pids
 
+    def get_variations_name(self):
+        widget_type = "SWATCH_VARIANTS"
+        slot = self.get_target_slot_data(widget_type)
+        variations_name = []
+        if slot:
+            if slot.get('renderableComponents'):
+                for renderableComponent in slot.get('renderableComponents'):
+                    if renderableComponent.get('value'):
+                        if renderableComponent.get('value').get('swatchValue'):
+                            variations_name.append(renderableComponent.get('value').get('swatchValue').get('value'))
+        return variations_name
 
     def get_moq(self):
         widget_type = 'SHOPSY_PRODUCT_PAGE_SUMMARY_V2'
         slot = self.get_target_slot_data(widget_type)
         moq = '1'
-        if slot.get('moqComponent'):
-            if slot.get('moqComponent').get('type') == 'MoqAnnouncement':
-                if slot.get('moqComponent').get('announcement'):
-                    if slot.get('moqComponent').get('announcement').get('title'):
-                        if slot.get('moqComponent').get('announcement').get('title').get('value'):
-                            moq_str = slot.get('moqComponent').get('announcement').get('title').get('value').get('text')
-                            numbers = re.findall(r'\d+', moq_str)
-                            if numbers:
-                                moq = numbers[0]
+        if slot:
+            if slot.get('moqComponent'):
+                if slot.get('moqComponent').get('type') == 'MoqAnnouncement':
+                    if slot.get('moqComponent').get('announcement'):
+                        if slot.get('moqComponent').get('announcement').get('title'):
+                            if slot.get('moqComponent').get('announcement').get('title').get('value'):
+                                moq_str = slot.get('moqComponent').get('announcement').get('title').get('value').get('text')
+                                numbers = re.findall(r'\d+', moq_str)
+                                if numbers:
+                                    moq = numbers[0]
+            return moq
         return moq
 
     def get_all_images(self):
@@ -198,38 +274,43 @@ class ShopsyParse():
         widget_type = "DELIVERY"
         slot = self.get_target_slot_data(widget_type)
         arrival_date = ''
-        if slot:
-            messages = slot.get('messages')
-            if messages:
-                for message in messages:
-                    if message.get('value'):
-                        if message.get('value').get('type') == 'DeliveryInfoMessage':
-                            date_text = message.get('value').get('dateText')
-                            arrival_date = datetime.strptime(
-                                    datetime.strftime(datetime.now() + timedelta(days=1), '%d %b, %A, %Y'),
-                                    '%d %b, %A, %Y') if date_text.startswith("Tomorrow") else datetime.strptime(
-                                    f"{date_text}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
-        if not arrival_date:
-            date_text = self.page_context.get('trackingDataV2').get('slaText')
-            arrival_date = datetime.strptime(f"{date_text}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
-        return arrival_date
+        try:
+            if slot:
+                messages = slot.get('messages')
+                if messages:
+                    for message in messages:
+                        if message.get('value'):
+                            if message.get('value').get('type') == 'DeliveryInfoMessage':
+                                date_text = message.get('value').get('dateText')
+                                arrival_date = datetime.strptime(
+                                        datetime.strftime(datetime.now() + timedelta(days=1), '%d %b, %A, %Y'),
+                                        '%d %b, %A, %Y') if date_text.startswith("Tomorrow") else datetime.strptime(
+                                        f"{date_text}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
+            if not arrival_date:
+                date_text = self.page_context.get('trackingDataV2').get('slaText')
+                arrival_date = datetime.strptime(f"{date_text}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
+            return arrival_date
+        except:
+            return 'N/A'
 
     def get_shipping_price(self):
 
         if ('"freeOption":true' in self.response.text) or ('FREE Delivery' in self.response.text):
-            return '0'
+            return 'N/A'
 
         widget_type = "DELIVERY"
         slot = self.get_target_slot_data(widget_type)
-        for msg in slot.get('messages'):
-            shiping_charges = None
-            if msg.get('value'):
-                if msg.get('value').get('type') == "DeliveryInfoMessage":
-                    shiping_charges = msg.get('value').get('charge')[0].get('decimalValue')
-            if shiping_charges:
-                return shiping_charges
-            else:
-                return '0'
+        if slot:
+            for msg in slot.get('messages'):
+                shiping_charges = None
+                if msg.get('value'):
+                    if msg.get('value').get('type') == "DeliveryInfoMessage":
+                        shiping_charges = msg.get('value').get('charge')[0].get('decimalValue')
+                if shiping_charges:
+                    return shiping_charges
+                else:
+                    return 'N/A'
+        return 'N/A'
 
     def get_coupons(self):
         widget_type = "NEP_COUPON"
@@ -395,7 +476,10 @@ class ShopsyParse():
             if specifications:
                 for specification in specifications:
                     for attribute in specification.get('value').get('attributes'):
-                        productSpecification[self.clean_name(attribute.get('name'))] = self.clean_name(
+                        spec_key = self.clean_name(attribute.get('name'))
+                        if not spec_key:
+                            spec_key = self.clean_name(specification.get('value').get('key'))
+                        productSpecification[spec_key] = self.clean_name(
                             " | ".join(attribute.get('values')))
             return productSpecification
         except:
@@ -415,6 +499,21 @@ class ShopsyParse():
         except:
             pass
         return sellers
+
+    def get_product_highlights(self):
+        widget_type = 'PRODUCT_RICH_HIGHLIGHTS'
+        slot = self.get_target_slot_data(widget_type)
+        highlights = {}
+        if slot:
+            descriptionCardsComponents = slot.get('descriptionCardsComponents')
+            if descriptionCardsComponents:
+                for descriptionCardsComponent in descriptionCardsComponents:
+                    if descriptionCardsComponent.get('value'):
+                        title = descriptionCardsComponent.get('value').get('title')
+                        text = descriptionCardsComponent.get('value').get('text')
+                        highlights[title] = text
+        return highlights
+
 
     def get_product_details_from_pdp(self):
         widget_type = "PRODUCT_DETAILS"
