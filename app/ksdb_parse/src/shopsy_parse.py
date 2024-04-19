@@ -128,7 +128,7 @@ class ShopsyParse():
             if slot.get('renderableComponents'):
                 for renderableComponent in slot.get('renderableComponents'):
                     if renderableComponent.get('value'):
-                        pid = slot.get('renderableComponents').get('value').get('id')
+                        pid = renderableComponent.get('value').get('id')
                         variation_pids.append(pid)
         return variation_pids
 
