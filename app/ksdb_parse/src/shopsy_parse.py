@@ -111,7 +111,24 @@ class ShopsyParse():
                         if slot.get('widget'):
                             slot_data = slot.get('widget').get('data')
                             return slot_data
-
+                            
+    def get_policy_info(self):
+        widget_type = 'POLICY_DETAILS'
+        slot = self.get_target_slot_data(widget_type)
+        policy_info = []
+        if slot:
+            policies = slot.get('policyInfo')
+            if policies:
+                for policy in policies:
+                    'RESPONSE.slots[8].widget.data.policyInfo[0].value.policyCallout.text'
+                    if policy.get('value'):
+                        if policy.get('value').get('policyCallout'):
+                            policy_text = policy.get('value').get('policyCallout').get('text')
+                            if policy_text:
+                                policy_info.append(policy_text)
+        if policy_info:
+            return policy_info
+    
     def get_variations_list(self):
         variation_pids = []
         widget_type = "COMPOSED_SWATCH"
