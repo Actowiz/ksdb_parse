@@ -501,6 +501,24 @@ class ShopsyParse():
             if not arrival_date:
                 date_text = self.page_context.get('trackingDataV2').get('slaText')
                 arrival_date = datetime.strptime(f"{date_text}, {datetime.strftime(datetime.now(), '%Y')}", '%d %b, %A, %Y')
+                try:
+                    if arrival_date:
+                        current_date = datetime.now()
+                        # Ensure `arrival_date` is a datetime object before comparison
+                        if isinstance(arrival_date, str):
+                            arrival_date = datetime.strptime(arrival_date, '%d %b, %A, %Y')
+                        formatted_current_date = datetime.strptime(
+                            current_date.strftime('%d %b, %A, %Y'), '%d %b, %A, %Y')
+
+                        if arrival_date < formatted_current_date:
+                            # Increment the year and format back to the desired format
+                            arrival_date = arrival_date.replace(year=arrival_date.year + 1).strftime(
+                                "%Y-%m-%d %H:%M:%S")
+                            # arrival_date = arrival_date.strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        arrival_date = arrival_date
+                except:
+                    arrival_date = arrival_date
             return arrival_date
         except:
             return 'N/A'
@@ -533,6 +551,18 @@ class ShopsyParse():
                 try:
                     ordered_tag = slot.get('renderableComponents')[0].get('value').get('data').get('data')[0].get('value').get('text')
                     return ordered_tag
+                except:
+                    return None
+
+    def get_product_Tag(self):
+        widget_type = 'MULTIMEDIA_SHOPSY'
+        slot = self.get_target_slot_data(widget_type)
+        if slot:
+            # RESPONSE.slots[1].widget.data.tagsData[0].data[0].text
+            if slot.get('tagsData'):
+                try:
+                    product_Tag = slot.get('tagsData')[0].get('data')[0].get('text')
+                    return product_Tag
                 except:
                     return None
 
@@ -1096,7 +1126,6 @@ class ShopsyParse():
                         # product_detail.append(product_detail_details)
                     specifications = slot.get('renderableComponent').get('value').get('specification')
                     if specifications:
-
                         for specification in specifications:
                             name = specification.get('name')
                             values = specification.get('values')
